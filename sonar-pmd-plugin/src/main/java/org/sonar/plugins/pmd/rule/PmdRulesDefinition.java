@@ -29,7 +29,7 @@ import org.sonar.api.server.rule.RulesDefinitionXmlLoader;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.plugins.pmd.PmdConstants;
-import org.sonar.squidbridge.rules.SqaleXmlLoader;
+// import org.sonar.squidbridge.rules.SqaleXmlLoader;
 
 public final class PmdRulesDefinition implements RulesDefinition {
 
@@ -53,7 +53,9 @@ public final class PmdRulesDefinition implements RulesDefinition {
 
         ExternalDescriptionLoader.loadHtmlDescriptions(repository, htmlDescriptionFolder);
         loadNames(repository);
-        SqaleXmlLoader.load(repository, "/com/sonar/sqale/pmd-model.xml");
+        // SqaleXmlLoader.load(repository, "/com/sonar/sqale/pmd-model.xml");
+        RulesDefinitionXmlLoader ruleLoader = new RulesDefinitionXmlLoader();
+        ruleLoader.load(repository, PmdRulesDefinition.class.getResourceAsStream("/com/sonar/sqale/pmd-model.xml"), "UTF-8");
     }
 
     @Override
@@ -64,6 +66,8 @@ public final class PmdRulesDefinition implements RulesDefinition {
 
         extractRulesData(repository, "/org/sonar/plugins/pmd/rules.xml", "/org/sonar/l10n/pmd/rules/pmd");
 
+        // p3c
+        extractRulesData(repository, "/org/sonar/plugins/pmd/rules-p3c.xml", "/org/sonar/l10n/pmd/rules/pmd-p3c");
         repository.done();
     }
 
