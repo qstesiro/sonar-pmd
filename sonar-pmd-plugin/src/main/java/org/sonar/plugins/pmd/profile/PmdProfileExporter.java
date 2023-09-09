@@ -26,10 +26,12 @@ import org.sonar.api.profiles.RulesProfile;
 import org.sonar.plugins.pmd.PmdConstants;
 import org.sonar.plugins.pmd.xml.PmdRuleSet;
 import org.sonar.plugins.pmd.xml.PmdRuleSets;
+import org.sonarsource.api.sonarlint.SonarLintSide;
 
 /**
  * ServerSide component that is able to export all currently active PMD rules as XML.
  */
+@SonarLintSide
 public class PmdProfileExporter extends ProfileExporter {
 
     private static final String CONTENT_TYPE_APPLICATION_XML = "application/xml";

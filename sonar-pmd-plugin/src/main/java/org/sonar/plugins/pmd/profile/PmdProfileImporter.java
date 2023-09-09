@@ -34,7 +34,9 @@ import org.sonar.plugins.pmd.xml.PmdProperty;
 import org.sonar.plugins.pmd.xml.PmdRule;
 import org.sonar.plugins.pmd.xml.PmdRuleSet;
 import org.sonar.plugins.pmd.xml.PmdRuleSets;
+import org.sonarsource.api.sonarlint.SonarLintSide;
 
+@SonarLintSide
 public class PmdProfileImporter extends ProfileImporter {
 
     private final RuleFinder ruleFinder;

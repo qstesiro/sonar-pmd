@@ -32,6 +32,9 @@ import org.sonar.plugins.pmd.xml.PmdProperty;
 import org.sonar.plugins.pmd.xml.PmdRule;
 import org.sonar.plugins.pmd.xml.PmdRuleSet;
 
+
+import static java.lang.System.out;
+
 /**
  * Factory class to create {@link org.sonar.plugins.pmd.xml.PmdRuleSet} out of {@link org.sonar.api.batch.rule.ActiveRules}.
  */
@@ -47,17 +50,40 @@ public class ActiveRulesRuleSetFactory implements RuleSetFactory {
 
     @Override
     public PmdRuleSet create() {
-
+        out.printf("--- ActiveRulesRuleSetFactory.create\n");
+        // ???
+        // out.printf("--- active rules: %d\n", activeRules.findByRepository(repositoryKey).size());
+        // for (ActiveRule e : activeRules.findByRepository(repositoryKey)) {
+        //     out.printf("--- rule: %s, severity: %s\n", e.internalKey(), e.severity());
+        // }
         final Collection<ActiveRule> rules = this.activeRules.findByRepository(repositoryKey);
+        out.printf("--- active rules: %d\n", rules.size());
         PmdRuleSet ruleset = new PmdRuleSet();
         ruleset.setName(repositoryKey);
         ruleset.setDescription(String.format("Sonar Profile: %s", repositoryKey));
         for (ActiveRule rule : rules) {
             String configKey = rule.internalKey();
-            PmdRule pmdRule = new PmdRule(configKey, PmdLevelUtils.toLevel(RulePriority.valueOfString(rule.severity())));
+            // ???
+            out.printf(
+                "--- active rule: %s, lang: %s, severity: %s\n",
+                configKey,
+                rule.language(),
+                rule.severity()
+            );
+            PmdRule pmdRule = new PmdRule(
+                configKey,
+                PmdLevelUtils.toLevel(
+                    RulePriority.valueOfString(rule.severity())
+                )
+            );
+            // ???
+            out.printf(
+                "--- pmd rule: %s, severity: %d\n",
+                pmdRule.getRef(),
+                pmdRule.getPriority()
+            );
             addRuleProperties(rule, pmdRule);
             ruleset.addRule(pmdRule);
-
             pmdRule.processXpath(rule.internalKey());
         }
         return ruleset;

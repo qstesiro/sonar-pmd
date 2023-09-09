@@ -23,6 +23,7 @@ package org.sonar.plugins.pmd;
  * Common configuration parameters for the Sonar-PMD plugin.
  */
 public final class PmdConstants {
+
     public static final String PLUGIN_NAME = "PMD";
     public static final String PLUGIN_KEY = "pmd";
     public static final String REPOSITORY_KEY = PLUGIN_KEY;

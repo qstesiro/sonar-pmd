@@ -29,10 +29,17 @@ import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.batch.sensor.issue.NewIssueLocation;
 import org.sonar.api.rule.RuleKey;
+import org.sonarsource.api.sonarlint.SonarLintSide;
+import org.apache.commons.lang3.StringUtils;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.net.URI;
 
+import static java.lang.System.out;
+
 @ScannerSide
+@SonarLintSide
 public class PmdViolationRecorder {
 
     private final FileSystem fs;
@@ -49,46 +56,44 @@ public class PmdViolationRecorder {
             // Save violations only for existing resources
             return;
         }
-
         final RuleKey ruleKey = findActiveRuleKeyFor(pmdViolation);
-
         if (ruleKey == null) {
             // Save violations only for enabled rules
             return;
         }
-
         final NewIssue issue = context.newIssue()
-                .forRule(ruleKey);
-
+            .forRule(ruleKey);
         final TextRange issueTextRange = TextRangeCalculator.calculate(pmdViolation, inputFile);
-
         final NewIssueLocation issueLocation = issue.newLocation()
-                .on(inputFile)
-                .message(pmdViolation.getDescription())
-                .at(issueTextRange);
-
+            .on(inputFile)
+            .message(pmdViolation.getDescription())
+            .at(issueTextRange);
         issue.at(issueLocation)
-                .save();
+            .save();
     }
 
     private InputFile findResourceFor(RuleViolation violation) {
-        final URI uri = URI.create(violation.getFilename());
+        // final URI uri = URI.create(violation.getFilename());
+        String fileName = violation.getFilename();
+        // 注意顺序
+        fileName = StringUtils.removeStart(fileName, "file:\\");
+        fileName = StringUtils.removeStart(fileName, "file:");
+        // ???
+        out.printf("--- voliation file: %s\n", fileName);
+        final URI uri = Paths.get(fileName).toUri();
         return fs.inputFile(
-                fs.predicates().hasURI(uri)
+            fs.predicates().hasURI(uri)
         );
     }
 
     private RuleKey findActiveRuleKeyFor(RuleViolation violation) {
         final String internalRuleKey = violation.getRule().getName();
         RuleKey ruleKey = RuleKey.of(PmdConstants.REPOSITORY_KEY, internalRuleKey);
-
         if (activeRules.find(ruleKey) != null) {
             return ruleKey;
         }
-
         // Let's try the test repo.
         ruleKey = RuleKey.of(PmdConstants.TEST_REPOSITORY_KEY, internalRuleKey);
-
         return activeRules.find(ruleKey) != null ? ruleKey : null;
     }
 }

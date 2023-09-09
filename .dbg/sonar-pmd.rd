@@ -1,6 +1,16 @@
 # 编译
 {
-    mvn package -Dmaven.test.skip=true
+    alias build="mvn install -Dmaven.test.skip=true &&
+                 cp sonar-pmd-plugin/target/sonar-pmd-plugin-3.3.0.jar /media/sf_share"
+}
+
+# 扫描
+{
+    pmd check \
+        --dir=sonar-pmd-plugin/src/main/java \
+        --aux-classpath=sonar-pmd-plugin/src/main/java/classes \
+        --rulesets=rulesets/java/quickstart.xml \
+        --format=text
 }
 
 # 资料

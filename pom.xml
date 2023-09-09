@@ -90,8 +90,10 @@
       <dependency>
         <groupId>org.sonarsource.sonarqube</groupId>
         <artifactId>sonar-plugin-api</artifactId>
+        <!-- ??? -->
         <scope>provided</scope>
         <version>7.7</version>
+        <!-- ??? -->
         <exclusions>
           <exclusion>
             <groupId>xml-apis</groupId>
@@ -99,6 +101,12 @@
           </exclusion>
         </exclusions>
       </dependency>
+      <!-- <!-\- ??? -\-> -->
+      <!-- <dependency> -->
+			<!--   <groupId>stax</groupId> -->
+			<!--   <artifactId>stax</artifactId> -->
+			<!--   <version>1.2.0</version> -->
+		  <!-- </dependency> -->
       <dependency>
         <groupId>org.sonarsource.orchestrator</groupId>
         <artifactId>sonar-orchestrator</artifactId>

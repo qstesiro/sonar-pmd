@@ -34,6 +34,8 @@ import org.sonar.api.utils.log.Loggers;
 import java.nio.charset.Charset;
 import java.util.*;
 
+import static java.lang.System.out;
+
 public class PmdTemplate {
 
     private static final Logger LOG = Loggers.get(PmdTemplate.class);
@@ -68,7 +70,6 @@ public class PmdTemplate {
         configuration.setFailOnViolation(false);
         configuration.setIgnoreIncrementalAnalysis(true);
         configuration.setReportFormat(EmptyRenderer.NAME);
-
         return new PmdTemplate(configuration);
     }
 
@@ -92,18 +93,21 @@ public class PmdTemplate {
 
     private Collection<DataSource> toDataSources(Iterable<InputFile> files) {
         final Collection<DataSource> dataSources = new ArrayList<>();
-
         files.forEach(file -> dataSources.add(new ProjectDataSource(file)));
-
         return dataSources;
     }
 
     public Report process(Iterable<InputFile> files, RuleSet ruleset) {
+        // // ???
+        // Iterator<InputFile> iter = files.iterator();
+        // while (iter.hasNext()) {
+        //     out.printf("--- file path: %s\n", iter.next().toString());
+        // }
         return PMD.processFiles(
-                configuration,
-                Collections.singletonList(ruleset),
-                toDataSources(files),
-                Collections.emptyList()
+            configuration,
+            Collections.singletonList(ruleset),
+            toDataSources(files),
+            Collections.emptyList()
         );
     }
 }

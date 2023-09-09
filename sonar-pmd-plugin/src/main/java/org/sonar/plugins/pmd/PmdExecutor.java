@@ -19,7 +19,12 @@
  */
 package org.sonar.plugins.pmd;
 
-import net.sourceforge.pmd.*;
+import net.sourceforge.pmd.RuleSetLoader;
+import net.sourceforge.pmd.Report;
+import net.sourceforge.pmd.RuleSet;
+import net.sourceforge.pmd.PMDVersion;
+import net.sourceforge.pmd.RuleSetLoadException;
+
 import org.sonar.api.batch.ScannerSide;
 import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
@@ -33,6 +38,7 @@ import org.sonar.api.utils.log.Profiler;
 import org.sonar.plugins.java.api.JavaResourceLocator;
 import org.sonar.plugins.pmd.xml.PmdRuleSet;
 import org.sonar.plugins.pmd.xml.PmdRuleSets;
+import org.sonarsource.api.sonarlint.SonarLintSide;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,8 +50,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Iterator;
+
+import static java.lang.System.out;
 
 @ScannerSide
+@SonarLintSide
 public class PmdExecutor {
 
     private static final Logger LOGGER = Loggers.get(PmdExecutor.class);
@@ -56,100 +66,137 @@ public class PmdExecutor {
     private final JavaResourceLocator javaResourceLocator;
     private final Configuration settings;
 
-    public PmdExecutor(FileSystem fileSystem, ActiveRules rulesProfile,
-                       PmdConfiguration pmdConfiguration, JavaResourceLocator javaResourceLocator, Configuration settings) {
+    public PmdExecutor(
+        FileSystem fileSystem,
+        ActiveRules rulesProfile,
+        PmdConfiguration pmdConfiguration,
+        JavaResourceLocator javaResourceLocator,
+        Configuration settings
+    ) {
         this.fs = fileSystem;
         this.rulesProfile = rulesProfile;
         this.pmdConfiguration = pmdConfiguration;
         this.javaResourceLocator = javaResourceLocator;
         this.settings = settings;
+        out.printf("--- PmdExecutor - ActiveRules class: %s\n", rulesProfile.getClass().getName());
     }
 
     public Report execute() {
+        out.println("--- PmdExecutor.execute");
         final Profiler profiler = Profiler.create(LOGGER).startInfo("Execute PMD " + PMDVersion.VERSION);
         final ClassLoader initialClassLoader = Thread.currentThread().getContextClassLoader();
-
         try (URLClassLoader classLoader = createClassloader()) {
+            out.printf("--- class name: %s\n", getClass().getName());
             Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
-
             return executePmd(classLoader);
         } catch (IOException e) {
+            out.printf("--- IOException: %s\n", e.getMessage());
             LOGGER.error("Failed to close URLClassLoader.", e);
         } finally {
             Thread.currentThread().setContextClassLoader(initialClassLoader);
             profiler.stopInfo();
         }
-
         return null;
     }
 
     private Report executePmd(URLClassLoader classLoader) {
-
+        out.println("--- PmdExecutor.executePmd");
         final PmdTemplate pmdFactory = createPmdTemplate(classLoader);
-        final Optional<Report> mainReport = executeRules(pmdFactory, javaFiles(Type.MAIN), PmdConstants.REPOSITORY_KEY);
-        final Optional<Report> testReport = executeRules(pmdFactory, javaFiles(Type.TEST), PmdConstants.TEST_REPOSITORY_KEY);
-
-        final Report report = mainReport
-                .orElse(
-                        testReport.orElse(new Report())
-                );
-
+        final Optional<Report> mainReport = executeRules(
+            pmdFactory,
+            javaFiles(Type.MAIN),
+            PmdConstants.REPOSITORY_KEY
+        );
+        final Optional<Report> testReport = executeRules(
+            pmdFactory,
+            javaFiles(Type.TEST),
+            PmdConstants.TEST_REPOSITORY_KEY
+        );
+        final Report report = mainReport.orElse(testReport.orElse(new Report()));
         if (mainReport.isPresent() && testReport.isPresent()) {
             report.merge(testReport.get());
         }
-
+        // sonar.pmd.generateXml=true
         pmdConfiguration.dumpXmlReport(report);
-
         return report;
     }
 
     private Iterable<InputFile> javaFiles(Type fileType) {
         final FilePredicates predicates = fs.predicates();
+        // // ???
+        // Iterator<InputFile> iter = fs.inputFiles(
+        //     predicates.and(
+        //         predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
+        //         predicates.hasType(fileType)
+        //     )
+        // ).iterator();
+        // while (iter.hasNext()) {
+        //     out.printf("--- file path: %s\n", iter.next().toString());
+        // }
         return fs.inputFiles(
-                predicates.and(
-                        predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
-                        predicates.hasType(fileType)
-                )
+            predicates.and(
+                predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
+                predicates.hasType(fileType)
+            )
         );
     }
 
-    private Optional<Report> executeRules(PmdTemplate pmdFactory, Iterable<InputFile> files, String repositoryKey) {
+    private Optional<Report> executeRules(
+        PmdTemplate pmdFactory,
+        Iterable<InputFile> files,
+        String repositoryKey
+    ) {
+        out.println("--- PmdExecutor.executeRules +++");
         if (!files.iterator().hasNext()) {
             // Nothing to analyze
             LOGGER.debug("No files to analyze for {}", repositoryKey);
+            out.printf("--- No files to analyze for %s\n", repositoryKey);
             return Optional.empty();
         }
-
+        out.println("--- PmdExecutor.executeRules ---");
         final RuleSet ruleSet = createRuleSet(repositoryKey);
-
         if (ruleSet.size() < 1) {
             // No rule
             LOGGER.debug("No rules to apply for {}", repositoryKey);
+            out.printf("--- No rules to apply for %s(%s)\n", ruleSet.size(), repositoryKey);
             return Optional.empty();
         }
-
         LOGGER.debug("Found {} rules for {}", ruleSet.size(), repositoryKey);
-        return Optional.ofNullable(pmdFactory.process(files, ruleSet));
+        out.printf("--- Found %d rules for %s\n", ruleSet.size(), repositoryKey);
+        Optional<Report> report = Optional.ofNullable(pmdFactory.process(files, ruleSet));
+        return report;
     }
 
     private RuleSet createRuleSet(String repositoryKey) {
-        final String rulesXml = dumpXml(rulesProfile, repositoryKey);
-        final File ruleSetFile = pmdConfiguration.dumpXmlRuleSet(repositoryKey, rulesXml);
-        final String ruleSetFilePath = ruleSetFile.getAbsolutePath();
-
         try {
-            return new RuleSetLoader()
-                    .loadFromResource(ruleSetFilePath);
+            out.printf("--- PmdExecutor.createRuleSet\n");
+            final String rulesXml = dumpXml(rulesProfile, repositoryKey);
+            // out.printf("--- rulesXml: %s\n", rulesXml);
+            final File ruleSetFile = pmdConfiguration.dumpXmlRuleSet(repositoryKey, rulesXml);
+            out.printf("--- ruleSetFile: %s\n", ruleSetFile.toString());
+            final String ruleSetFilePath = ruleSetFile.getAbsolutePath();
+            out.printf("--- ruleSetFilePath: %s\n", ruleSetFilePath);
+            return new RuleSetLoader().loadFromResource(ruleSetFilePath);
         } catch (RuleSetLoadException e) {
+            e.printStackTrace();
+            // for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+            //     cause.printStackTrace();
+            // }
             throw new IllegalStateException(e);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+            //     cause.printStackTrace();
+            // }
+            throw e;
         }
     }
 
     private String dumpXml(ActiveRules rulesProfile, String repositoryKey) {
+        out.printf("--- PmdExecutor.dumpXml\n");
         final StringWriter writer = new StringWriter();
         final PmdRuleSet ruleSet = PmdRuleSets.from(rulesProfile, repositoryKey);
         ruleSet.writeTo(writer);
-
         return writer.toString();
     }
 
@@ -167,15 +214,20 @@ public class PmdExecutor {
             try {
                 urls.add(file.toURI().toURL());
             } catch (MalformedURLException e) {
-                throw new IllegalStateException("Failed to create the project classloader. Classpath element is invalid: " + file, e);
+                throw new IllegalStateException(
+                    "Failed to create the project classloader. " +
+                    "Classpath element is invalid: " +
+                    file, e
+                );
             }
         }
         return new URLClassLoader(urls.toArray(new URL[0]));
     }
 
     private String getSourceVersion() {
-        return settings.get(PmdConstants.JAVA_SOURCE_VERSION)
-                .orElse(PmdConstants.JAVA_SOURCE_VERSION_DEFAULT_VALUE);
+        return settings
+            .get(PmdConstants.JAVA_SOURCE_VERSION)
+            .orElse(PmdConstants.JAVA_SOURCE_VERSION_DEFAULT_VALUE);
     }
 
 }

@@ -33,6 +33,7 @@ public class PmdPlugin implements Plugin {
 
     @Override
     public void define(Context context) {
+        System.out.println("--- PmdPlugin.define"); // ???
         context.addExtensions(
                 PropertyDefinition.builder(PmdConfiguration.PROPERTY_GENERATE_XML)
                         .defaultValue("false")
