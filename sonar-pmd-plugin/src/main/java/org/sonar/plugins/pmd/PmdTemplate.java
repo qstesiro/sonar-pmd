@@ -19,6 +19,13 @@
  */
 package org.sonar.plugins.pmd;
 
+import java.nio.charset.Charset;
+import java.util.*;
+
+import org.sonar.api.batch.fs.InputFile;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
+
 import net.sourceforge.pmd.PMD;
 import net.sourceforge.pmd.PMDConfiguration;
 import net.sourceforge.pmd.Report;
@@ -27,18 +34,11 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.java.JavaLanguageModule;
 import net.sourceforge.pmd.renderers.EmptyRenderer;
 import net.sourceforge.pmd.util.datasource.DataSource;
-import org.sonar.api.batch.fs.InputFile;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
-
-import java.nio.charset.Charset;
-import java.util.*;
-
-import static java.lang.System.out;
 
 public class PmdTemplate {
 
-    private static final Logger LOG = Loggers.get(PmdTemplate.class);
+    private static final Logger log = Loggers.get(PmdTemplate.class);
+
     private static final Map<String, String> JAVA_VERSIONS = prepareVersions();
 
     private static Map<String, String> prepareVersions() {
@@ -79,7 +79,7 @@ public class PmdTemplate {
         if (languageVersion == null) {
             throw new IllegalArgumentException("Unsupported Java version for PMD: " + version);
         }
-        LOG.info("Java version: " + version);
+        log.info("Java version: " + version);
         return languageVersion;
     }
 
@@ -98,11 +98,10 @@ public class PmdTemplate {
     }
 
     public Report process(Iterable<InputFile> files, RuleSet ruleset) {
-        // // ???
-        // Iterator<InputFile> iter = files.iterator();
-        // while (iter.hasNext()) {
-        //     out.printf("--- file path: %s\n", iter.next().toString());
-        // }
+        Iterator<InputFile> iter = files.iterator();
+        while (iter.hasNext()) {
+            log.debug("file path: {}", iter.next().toString());
+        }
         return PMD.processFiles(
             configuration,
             Collections.singletonList(ruleset),

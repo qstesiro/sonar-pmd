@@ -27,5 +27,3 @@ Thumbs.db
 # Folder config file
 Desktop.ini
 .java-version
-
-!sonar-pmd-plugin/target/sonar-pmd-plugin-3.3.0.jar

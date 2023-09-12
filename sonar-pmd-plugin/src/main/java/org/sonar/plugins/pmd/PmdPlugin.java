@@ -21,6 +21,7 @@ package org.sonar.plugins.pmd;
 
 import org.sonar.api.Plugin;
 import org.sonar.api.config.PropertyDefinition;
+
 import org.sonar.plugins.pmd.profile.PmdProfileExporter;
 import org.sonar.plugins.pmd.profile.PmdProfileImporter;
 import org.sonar.plugins.pmd.rule.PmdRulesDefinition;
@@ -33,7 +34,6 @@ public class PmdPlugin implements Plugin {
 
     @Override
     public void define(Context context) {
-        System.out.println("--- PmdPlugin.define"); // ???
         context.addExtensions(
                 PropertyDefinition.builder(PmdConfiguration.PROPERTY_GENERATE_XML)
                         .defaultValue("false")

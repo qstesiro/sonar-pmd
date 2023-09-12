@@ -52,13 +52,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Iterator;
 
-import static java.lang.System.out;
-
 @ScannerSide
 @SonarLintSide
 public class PmdExecutor {
 
-    private static final Logger LOGGER = Loggers.get(PmdExecutor.class);
+    private static final Logger log = Loggers.get(PmdExecutor.class);
 
     private final FileSystem fs;
     private final ActiveRules rulesProfile;
@@ -78,20 +76,17 @@ public class PmdExecutor {
         this.pmdConfiguration = pmdConfiguration;
         this.javaResourceLocator = javaResourceLocator;
         this.settings = settings;
-        out.printf("--- PmdExecutor - ActiveRules class: %s\n", rulesProfile.getClass().getName());
+        log.debug("ActiveRules class: {}", rulesProfile.getClass().getName());
     }
 
     public Report execute() {
-        out.println("--- PmdExecutor.execute");
-        final Profiler profiler = Profiler.create(LOGGER).startInfo("Execute PMD " + PMDVersion.VERSION);
+        final Profiler profiler = Profiler.create(log).startInfo("Execute PMD " + PMDVersion.VERSION);
         final ClassLoader initialClassLoader = Thread.currentThread().getContextClassLoader();
         try (URLClassLoader classLoader = createClassloader()) {
-            out.printf("--- class name: %s\n", getClass().getName());
             Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
             return executePmd(classLoader);
         } catch (IOException e) {
-            out.printf("--- IOException: %s\n", e.getMessage());
-            LOGGER.error("Failed to close URLClassLoader.", e);
+            log.error("Failed to close URLClassLoader.", e);
         } finally {
             Thread.currentThread().setContextClassLoader(initialClassLoader);
             profiler.stopInfo();
@@ -100,7 +95,6 @@ public class PmdExecutor {
     }
 
     private Report executePmd(URLClassLoader classLoader) {
-        out.println("--- PmdExecutor.executePmd");
         final PmdTemplate pmdFactory = createPmdTemplate(classLoader);
         final Optional<Report> mainReport = executeRules(
             pmdFactory,
@@ -123,16 +117,6 @@ public class PmdExecutor {
 
     private Iterable<InputFile> javaFiles(Type fileType) {
         final FilePredicates predicates = fs.predicates();
-        // // ???
-        // Iterator<InputFile> iter = fs.inputFiles(
-        //     predicates.and(
-        //         predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
-        //         predicates.hasType(fileType)
-        //     )
-        // ).iterator();
-        // while (iter.hasNext()) {
-        //     out.printf("--- file path: %s\n", iter.next().toString());
-        // }
         return fs.inputFiles(
             predicates.and(
                 predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
@@ -146,54 +130,40 @@ public class PmdExecutor {
         Iterable<InputFile> files,
         String repositoryKey
     ) {
-        out.println("--- PmdExecutor.executeRules +++");
         if (!files.iterator().hasNext()) {
             // Nothing to analyze
-            LOGGER.debug("No files to analyze for {}", repositoryKey);
-            out.printf("--- No files to analyze for %s\n", repositoryKey);
+            log.debug("No files to analyze for {}", repositoryKey);
             return Optional.empty();
         }
-        out.println("--- PmdExecutor.executeRules ---");
         final RuleSet ruleSet = createRuleSet(repositoryKey);
         if (ruleSet.size() < 1) {
             // No rule
-            LOGGER.debug("No rules to apply for {}", repositoryKey);
-            out.printf("--- No rules to apply for %s(%s)\n", ruleSet.size(), repositoryKey);
+            log.debug("No rules to apply for {}", repositoryKey);
             return Optional.empty();
         }
-        LOGGER.debug("Found {} rules for {}", ruleSet.size(), repositoryKey);
-        out.printf("--- Found %d rules for %s\n", ruleSet.size(), repositoryKey);
+        log.debug("Found {} rules for {}", ruleSet.size(), repositoryKey);
         Optional<Report> report = Optional.ofNullable(pmdFactory.process(files, ruleSet));
         return report;
     }
 
     private RuleSet createRuleSet(String repositoryKey) {
         try {
-            out.printf("--- PmdExecutor.createRuleSet\n");
             final String rulesXml = dumpXml(rulesProfile, repositoryKey);
-            // out.printf("--- rulesXml: %s\n", rulesXml);
             final File ruleSetFile = pmdConfiguration.dumpXmlRuleSet(repositoryKey, rulesXml);
-            out.printf("--- ruleSetFile: %s\n", ruleSetFile.toString());
+            log.debug("ruleSetFile: {}", ruleSetFile.toString());
             final String ruleSetFilePath = ruleSetFile.getAbsolutePath();
-            out.printf("--- ruleSetFilePath: %s\n", ruleSetFilePath);
+            log.debug("ruleSetFilePath: {}", ruleSetFilePath);
             return new RuleSetLoader().loadFromResource(ruleSetFilePath);
         } catch (RuleSetLoadException e) {
             e.printStackTrace();
-            // for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
-            //     cause.printStackTrace();
-            // }
             throw new IllegalStateException(e);
         } catch (Exception e) {
             e.printStackTrace();
-            // for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
-            //     cause.printStackTrace();
-            // }
             throw e;
         }
     }
 
     private String dumpXml(ActiveRules rulesProfile, String repositoryKey) {
-        out.printf("--- PmdExecutor.dumpXml\n");
         final StringWriter writer = new StringWriter();
         final PmdRuleSet ruleSet = PmdRuleSets.from(rulesProfile, repositoryKey);
         ruleSet.writeTo(writer);

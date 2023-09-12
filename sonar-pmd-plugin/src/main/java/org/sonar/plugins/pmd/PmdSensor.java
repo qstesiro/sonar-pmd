@@ -31,10 +31,12 @@ import org.sonar.api.batch.rule.ActiveRules;
 import org.sonar.api.batch.sensor.Sensor;
 import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.SensorDescriptor;
-
-import static java.lang.System.out;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 
 public class PmdSensor implements Sensor {
+
+    private static final Logger log = Loggers.get(PmdSensor.class);
 
     private final ActiveRules profile;
     private final PmdExecutor executor;
@@ -51,7 +53,7 @@ public class PmdSensor implements Sensor {
         this.executor = executor;
         this.pmdViolationRecorder = pmdViolationRecorder;
         this.fs = fs;
-        out.printf("--- PmdSensor - ActiveRules class: %s\n", profile.getClass().getName());
+        log.debug("ActiveRules class: {}", profile.getClass().getName());
     }
 
     private boolean shouldExecuteOnProject() {
@@ -61,16 +63,6 @@ public class PmdSensor implements Sensor {
 
     private boolean hasFilesToCheck(Type type, String repositoryKey) {
         FilePredicates predicates = fs.predicates();
-        // // ???
-        // Iterator<InputFile> iter = fs.inputFiles(
-        //     predicates.and(
-        //         predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
-        //         predicates.hasType(type)
-        //     )
-        // ).iterator();
-        // while (iter.hasNext()) {
-        //     out.printf("--- file path: %s\n", iter.next().toString());
-        // }
         final boolean hasMatchingFiles = fs.hasFiles(
             predicates.and(
                 predicates.hasLanguage(PmdConstants.LANGUAGE_KEY),
@@ -88,19 +80,15 @@ public class PmdSensor implements Sensor {
 
     @Override
     public void describe(SensorDescriptor descriptor) {
-        out.println("--- PmdSensor.describe");
         descriptor.onlyOnLanguage(PmdConstants.LANGUAGE_KEY)
                 .name("PmdSensor");
     }
 
     @Override
     public void execute(SensorContext context) {
-        out.println("--- PmdSensor.execute"); // ???
-        // return;
         if (shouldExecuteOnProject()) {
-            out.printf("--- should execute\n");
             for (RuleViolation violation : executor.execute()) {
-                out.printf("--- violation: %s\n", violation.getRule().getName());
+                log.debug("violation: {}", violation.getRule().getName());
                 pmdViolationRecorder.saveViolation(violation, context);
             }
         }

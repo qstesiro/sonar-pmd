@@ -19,8 +19,13 @@
  */
 package org.sonar.plugins.pmd;
 
-import net.sourceforge.pmd.RuleViolation;
+import java.io.File;
+import java.nio.file.Paths;
+import java.net.URI;
+
 import org.sonar.api.batch.ScannerSide;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.TextRange;
@@ -29,18 +34,17 @@ import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.batch.sensor.issue.NewIssueLocation;
 import org.sonar.api.rule.RuleKey;
+
 import org.sonarsource.api.sonarlint.SonarLintSide;
+
+import net.sourceforge.pmd.RuleViolation;
 import org.apache.commons.lang3.StringUtils;
-
-import java.io.File;
-import java.nio.file.Paths;
-import java.net.URI;
-
-import static java.lang.System.out;
 
 @ScannerSide
 @SonarLintSide
 public class PmdViolationRecorder {
+
+    private static final Logger log = Loggers.get(PmdViolationRecorder.class);
 
     private final FileSystem fs;
     private final ActiveRules activeRules;
@@ -78,8 +82,7 @@ public class PmdViolationRecorder {
         // 注意顺序
         fileName = StringUtils.removeStart(fileName, "file:\\");
         fileName = StringUtils.removeStart(fileName, "file:");
-        // ???
-        out.printf("--- voliation file: %s\n", fileName);
+        log.debug("voliation file: {}", fileName);
         final URI uri = Paths.get(fileName).toUri();
         return fs.inputFile(
             fs.predicates().hasURI(uri)

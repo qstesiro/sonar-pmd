@@ -27,18 +27,21 @@ import java.util.Map;
 import org.sonar.api.batch.rule.ActiveRule;
 import org.sonar.api.batch.rule.ActiveRules;
 import org.sonar.api.rules.RulePriority;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
+
 import org.sonar.plugins.pmd.PmdLevelUtils;
 import org.sonar.plugins.pmd.xml.PmdProperty;
 import org.sonar.plugins.pmd.xml.PmdRule;
 import org.sonar.plugins.pmd.xml.PmdRuleSet;
 
-
-import static java.lang.System.out;
-
 /**
- * Factory class to create {@link org.sonar.plugins.pmd.xml.PmdRuleSet} out of {@link org.sonar.api.batch.rule.ActiveRules}.
+ * Factory class to create {@link org.sonar.plugins.pmd.xml.PmdRuleSet}
+ * out of {@link org.sonar.api.batch.rule.ActiveRules}.
  */
 public class ActiveRulesRuleSetFactory implements RuleSetFactory {
+
+    private final static Logger log = Loggers.get(ActiveRulesRuleSetFactory.class);
 
     private final ActiveRules activeRules;
     private final String repositoryKey;
@@ -50,22 +53,19 @@ public class ActiveRulesRuleSetFactory implements RuleSetFactory {
 
     @Override
     public PmdRuleSet create() {
-        out.printf("--- ActiveRulesRuleSetFactory.create\n");
-        // ???
-        // out.printf("--- active rules: %d\n", activeRules.findByRepository(repositoryKey).size());
-        // for (ActiveRule e : activeRules.findByRepository(repositoryKey)) {
-        //     out.printf("--- rule: %s, severity: %s\n", e.internalKey(), e.severity());
-        // }
+        log.debug("active rules: {}", activeRules.findByRepository(repositoryKey).size());
+        for (ActiveRule e : activeRules.findByRepository(repositoryKey)) {
+            log.debug("rule: {}, severity: {}", e.internalKey(), e.severity());
+        }
         final Collection<ActiveRule> rules = this.activeRules.findByRepository(repositoryKey);
-        out.printf("--- active rules: %d\n", rules.size());
+        log.debug("active rules: {}", rules.size());
         PmdRuleSet ruleset = new PmdRuleSet();
         ruleset.setName(repositoryKey);
         ruleset.setDescription(String.format("Sonar Profile: %s", repositoryKey));
         for (ActiveRule rule : rules) {
             String configKey = rule.internalKey();
-            // ???
-            out.printf(
-                "--- active rule: %s, lang: %s, severity: %s\n",
+            log.debug(
+                "active rule: {}, lang: {}, severity: {}",
                 configKey,
                 rule.language(),
                 rule.severity()
@@ -76,9 +76,8 @@ public class ActiveRulesRuleSetFactory implements RuleSetFactory {
                     RulePriority.valueOfString(rule.severity())
                 )
             );
-            // ???
-            out.printf(
-                "--- pmd rule: %s, severity: %d\n",
+            log.debug(
+                "pmd rule: {}, severity: {}",
                 pmdRule.getRef(),
                 pmdRule.getPriority()
             );
